@@ -2,124 +2,148 @@ import os
 import keras
 import cv2 as cv
 from matplotlib import pyplot as plt
-# import tensorflow_addons as tfa
-
 import numpy as np
-# from keras.models import Model
-# from tensorflow import Model
-import tf
+from config import config
 
+class AI:
 
-BASE_PATH = './DataSet'
-default_img_shape = 640
+  def __init__(self, config):
+    self.model = keras.Sequential()
+    self.dataSet = { # Data set structure
+      "train": {
+        "images": [],
+        "targets": [],
+      },
+      "test": {
+        "images": [],
+        "targets": [],
+      }
+    }
+    self.config = config
 
-def load_data_set(type='train'):
-  # Configure paths
-  IMG_DIR_PATH = os.path.join(BASE_PATH, type)
-  annotations_path = os.path.join(IMG_DIR_PATH, '_annotations.csv')
-  # Reading annotations
-  annotations_file = open(annotations_path)
-  # Convertting annotations to array
-  raws = []
-  for line in annotations_file: 
-    line = line.replace("640,640,Pill,", '')# Delliting usles information
-    raws.append(line.replace('\n', '').split(',')) 
-  raws.pop(0) # Removing from csv data first~header line 
+  def load_data_set(self, dataSet, type="train"):
+    self.dataSet[type] = dataSet
 
-  out_data = {
-    "images": [],
-    "targets": []
-  }
-  for index in range(0, len(raws)): # Converting each number to percentage of image size to cordinates
-    temp = list(map(lambda x: int(x)/default_img_shape if x.isnumeric() else x, raws[index]))
-    path_to_img = os.path.join(IMG_DIR_PATH, temp[0]) 
-    image = cv.imread(path_to_img) #, cv.IMREAD_GRAYSCALE)
-    image = cv.resize(image, (224,224))
-    image = image[...,::-1]
-    out_data["images"].append(image / 255.0)
-    out_data["targets"].append(temp[1::])
+  def get_data_set(self, type='train'): # Getting raw data as raws in array
+    # Configure paths
+    IMG_DIR_PATH = os.path.join(self.config["DATA_SET_PATH"], type)
+    annotations_path = os.path.join(IMG_DIR_PATH, '_annotations.csv')
+      
+    # Convertting annotations to array
+    with open(annotations_path) as annotations_file: # Reading annotations
+      lines = annotations_file.read()
+      lines = lines.split('\n') # spliting every line
+    lines.pop(0) # Removing from csv data first~header line 
+    return lines
 
-  out_data["images"] = np.array(out_data["images"], dtype="float32") 
-  out_data["targets"] = np.array(out_data["targets"], dtype="float32")
-  return out_data
-
-def init_model(train_img, train_target, test_img, test_target): #predictor):
-  model = keras.Sequential()
-
-  # Block 1
-  model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", input_shape = (224, 224, 3), activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.MaxPooling2D())
   
-  # Block 2
-  model.add(keras.layers.Conv2D(filters = 128, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 128, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.MaxPooling2D())
+  def convert_data_set(self, annotations_data, del_substr="640,640,Pill,", type='train'):
+    dataSet = {
+      "images": [],
+      "targets": []
+    }
+
+    for line in annotations_data: 
+      line = line.replace(del_substr, '') # Delliting usles information
+      line = line.split(',') # [image-name, xmin, ymin, xmax, ymax]
+      path_to_img = os.path.join(self.config["DATA_SET_PATH"], type, line[0]) 
+      image = cv.imread(path_to_img)
+      image = cv.resize(image, (224,224))
+      image = image[...,::-1]
+      dataSet["images"].append(image / 255.0) 
+      converted_targets = list(map(int, line[1::]))
+      converted_targets = np.divide(converted_targets, self.config["DEFAULT_IMG_SHAPE"] * 2) #geting line as [xmin, ymin, xmax, ymax] and shape as [x,y] * 2 => [x,y,x,y]
+      dataSet["targets"].append(converted_targets)
+
+    dataSet["images"] = np.array(dataSet["images"], dtype="float32")
+    dataSet["targets"] = np.array(dataSet["targets"], dtype="float32")
+    return dataSet
   
-  
-  # Block 3
-  model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.MaxPooling2D())
+  def init_layers(self):
+    # Block 1
+    self.model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", input_shape = (224, 224, 3), activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.MaxPooling2D())
+    
+    # Block 2
+    self.model.add(keras.layers.Conv2D(filters = 128, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 128, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.MaxPooling2D())
+    
+    
+    # Block 3
+    self.model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.MaxPooling2D())
 
     # Block 4
-  model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.MaxPooling2D())
+    self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.MaxPooling2D())
 
-      # Block 5
-  model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-  model.add(keras.layers.MaxPooling2D())
+    # Block 5
+    self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
+    self.model.add(keras.layers.MaxPooling2D())
+    
+    # Top
+    self.model.add(keras.layers.Flatten())
+    self.model.add(keras.layers.Dense(256, activation="relu"))
+    self.model.add(keras.layers.Dense(128, activation="relu"))
+    self.model.add(keras.layers.Dense(64, activation="relu"))
+    self.model.add(keras.layers.Dense(32, activation="relu"))
+    self.model.add(keras.layers.Dense(4, activation="sigmoid"))
+    
+
+    opt = keras.optimizers.Adam(self.config["LEARNING_RATE"])
+    loss_fn = keras.losses.binary_crossentropy
+    self.model.compile(loss="mse", optimizer=opt)
+    print(self.model.summary())
+
+
+  def fit_data_set(self):
+    H = self.model.fit(self.dataSet["train"]["images"], 
+                       self.dataSet["train"]["targets"], 
+                       validation_data=(self.dataSet["test"]["images"], self.dataSet["test"]["targets"]), 
+                       batch_size=self.config["BATCH_SIZE"], 
+                       epochs=self.config["EPOCHS"], 
+                       verbose=1)
+    return H
   
-  # Top
-
-  model.add(keras.layers.Flatten())
-  model.add(keras.layers.Dense(256, activation="relu"))
-  model.add(keras.layers.Dense(128, activation="relu"))
-  model.add(keras.layers.Dense(64, activation="relu"))
-  model.add(keras.layers.Dense(32, activation="relu"))
-  model.add(keras.layers.Dense(4, activation="sigmoid"))
-  
-  # model.build()
-  # model.summary()
-
-  opt = keras.optimizers.Adam(learning_rate=1e-4)
-  loss_fn = keras.losses.binary_crossentropy
-  model.compile(loss="mse", optimizer=opt)
-  print(model.summary())
-
-  H = model.fit(train_img, train_target, validation_data=(test_img, test_target), batch_size=32, epochs=10, verbose=1)
-
-  N = 10
-  plt.style.use("ggplot")
-  plt.figure()
-  plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
-  plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
-  plt.title("Bounding Box Regression Loss on Training Set")
-  plt.xlabel("Epoch #")
-  plt.ylabel("Loss")
-  plt.legend(loc="lower left")
-  plt.savefig("training.png")
-  plt.show()
+  def show_and_write_result(self, H):
+    N = self.config["EPOCHS"]
+    plt.style.use("ggplot")
+    plt.figure()
+    plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+    plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+    plt.title("Bounding Box Regression Loss on Training Set")
+    plt.xlabel("Epoch #")
+    plt.ylabel("Loss")
+    plt.legend(loc="lower left")
+    plt.savefig("training.png")
+    plt.show()
 
 
-  # result = model.predict(np.array([predictor]))
-  # 
-  # for i in range(0, 64):
-  #   predict_img = result[0, :, :, i]
-  #   ax = plt.subplot(8,8,i+1)
-  #   ax.set_xticks([])
-  #   ax.set_yticks([])
-  #   plt.imshow(predict_img, cmap="gray")
-  # plt.show()
 
-# def train(model, train_img, train_target):
+model = AI(config)
+type = "train"
+data = model.get_data_set(type)
+data = model.convert_data_set(data, type=type)
+model.load_data_set(data, type=type)
 
-train_data = load_data_set()
-test_data = load_data_set("test")
-# print(test_data["images"][1])
-init_model(train_data["images"], train_data["targets"], test_data["images"], test_data["targets"])
+type = "test"
+data = model.get_data_set(type)
+data = model.convert_data_set(data, type=type)
+model.load_data_set(data, type=type)
+
+model.init_layers()
+
+# print(model.dataSet)
+
+
+
+H = model.fit_data_set()
+model.show_and_write_result(H)
