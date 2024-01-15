@@ -52,8 +52,8 @@ class AI:
       image = image[...,::-1]
       dataSet["images"].append(image / 255.0) 
       converted_targets = list(map(int, line[1::]))
-      converted_targets = np.divide(converted_targets, self.config["DEFAULT_IMG_SHAPE"] * 2) #geting line as [xmin, ymin, xmax, ymax] and shape as [x,y] * 2 => [x,y,x,y]
-      dataSet["targets"].append(converted_targets)
+      converted_targets = np.divide(converted_targets, self.config["DEFAULT_IMG_SHAPE"] * 2) #geting line as[xmin, ymin, xmax, ymax]/([x,y]*2=>[x,y,x,y])
+      dataSet["targets"].append(converted_targets) # 0 >= converted_targets <= 1 
 
     dataSet["images"] = np.array(dataSet["images"], dtype="float32")
     dataSet["targets"] = np.array(dataSet["targets"], dtype="float32")
