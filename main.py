@@ -127,23 +127,22 @@ class AI:
     plt.show()
 
 
+def main():
+  model = AI(config)
 
-model = AI(config)
-type = "train"
-data = model.get_data_set(type)
-data = model.convert_data_set(data, type=type)
-model.load_data_set(data, type=type)
+  type = "train"
+  data = model.get_data_set(type)
+  data = model.convert_data_set(data, type=type)
+  model.load_data_set(data, type=type)
 
-type = "test"
-data = model.get_data_set(type)
-data = model.convert_data_set(data, type=type)
-model.load_data_set(data, type=type)
+  type = "test"
+  data = model.get_data_set(type)
+  data = model.convert_data_set(data, type=type)
+  model.load_data_set(data, type=type)
 
-model.init_layers()
+  model.init_layers()
 
-# print(model.dataSet)
+  H = model.fit_data_set()
+  model.show_and_write_result(H)
 
-
-
-H = model.fit_data_set()
-model.show_and_write_result(H)
+  main()
