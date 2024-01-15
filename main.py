@@ -34,7 +34,7 @@ def load_data_set(type='train'):
     temp = list(map(lambda x: int(x)/default_img_shape if x.isnumeric() else x, raws[index]))
     path_to_img = os.path.join(IMG_DIR_PATH, temp[0]) 
     image = cv.imread(path_to_img, cv.IMREAD_GRAYSCALE)
-    image = cv.resize(image, (256,256))
+    image = cv.resize(image, (224,224))
     out_data["images"].append(image / 255.0)
     out_data["targets"].append(temp[1::])
 
@@ -46,7 +46,7 @@ def init_model(train_img, train_target, test_img, test_target): #predictor):
   model = keras.Sequential()
 
   # Block 1
-  model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", input_shape = (256, 256, 1), activation= "relu"))
+  model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", input_shape = (224, 224, 1), activation= "relu"))
   model.add(keras.layers.Conv2D(filters = 64, kernel_size = 3, padding="same", activation= "relu"))
   model.add(keras.layers.MaxPooling2D())
   
@@ -88,9 +88,21 @@ def init_model(train_img, train_target, test_img, test_target): #predictor):
   opt = keras.optimizers.Adam()
   loss_fn = keras.losses.binary_crossentropy
   model.compile(loss="mse", optimizer=opt)
-  # print(model.summary())
+  print(model.summary())
 
   H = model.fit(train_img, train_target, validation_data=(test_img, test_target), batch_size=32, epochs=5, verbose=1)
+
+  N = 5
+  plt.style.use("ggplot")
+  plt.figure()
+  plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+  plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+  plt.title("Bounding Box Regression Loss on Training Set")
+  plt.xlabel("Epoch #")
+  plt.ylabel("Loss")
+  plt.legend(loc="lower left")
+  plt.savefig("training.png")
+  plt.show()
 
 
   # result = model.predict(np.array([predictor]))
