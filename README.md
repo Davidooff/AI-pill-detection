@@ -1,7 +1,8 @@
 U can run this code buy
 
 python3 main.py [-option] [-option] [-option]
-options = 
+options:
+
 -l - load weights from weights.h5
 
 -train - start train
