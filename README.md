@@ -1,7 +1,6 @@
 U can run this code buy
 
 python3 main.py [-option] [-option] [-option]
-options:
 
 -l - load weights from weights.h5
 
