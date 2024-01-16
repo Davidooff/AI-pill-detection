@@ -91,7 +91,7 @@ class AI:
     
     # Top
     self.model.add(keras.layers.Flatten())
-    self.model.add(keras.layers.Dense(256, activation="relu"))
+    # self.model.add(keras.layers.Dense(256, activation="relu"))
     self.model.add(keras.layers.Dense(128, activation="relu"))
     self.model.add(keras.layers.Dense(64, activation="relu"))
     self.model.add(keras.layers.Dense(32, activation="relu"))
@@ -99,7 +99,7 @@ class AI:
     
 
     opt = keras.optimizers.Adam(self.config["LEARNING_RATE"])
-    loss_fn = keras.losses.binary_crossentropy
+    # loss_fn = keras.losses.binary_crossentropy
     self.model.compile(loss="mse", optimizer=opt)
     print(self.model.summary())
 
@@ -107,7 +107,7 @@ class AI:
   def fit_data_set(self):
     H = self.model.fit(self.dataSet["train"]["images"], 
                        self.dataSet["train"]["targets"], 
-                       validation_data=(self.dataSet["test"]["images"], self.dataSet["test"]["targets"]), 
+                       validation_data=(self.dataSet["valid"]["images"], self.dataSet["valid"]["targets"]), 
                        batch_size=self.config["BATCH_SIZE"], 
                        epochs=self.config["EPOCHS"], 
                        verbose=1)
@@ -125,24 +125,65 @@ class AI:
     plt.legend(loc="lower left")
     plt.savefig("training.png")
     plt.show()
+  
+  def predict(self, x):
+    return self.model.predict(x, batch_size=None, verbose="auto", steps=None, callbacks=None)
+  
+  def draw(self, x, y, type="valid"):
+    for i in range(len(x)):
+      path = os.path.join(self.config["DATA_SET_PATH"], type, x[i])
+      image = cv.imread(path)
+      start = np.array(y[i][:-2:] * self.config["DEFAULT_IMG_SHAPE"], dtype="int32")
+      end = np.array(y[i][2::] * self.config["DEFAULT_IMG_SHAPE"], dtype="int32")
+      print(start, end)
+      image = cv.rectangle(image, start, end, (255, 0, 0) , 2) 
+      cv.imshow("Bim-Bam", image)
+      cv.waitKey(0)
+
+  def save_w(self):
+    self.model.save_weights("new-tablet.weights.h5")
+
+  def load_w(self):
+    self.model.load_weights("tablet.weights.h5")
 
 
+model = AI(config)
 def main():
-  model = AI(config)
-
+  
   type = "train"
   data = model.get_data_set(type)
   data = model.convert_data_set(data, type=type)
   model.load_data_set(data, type=type)
 
-  type = "test"
+  type = "valid"
   data = model.get_data_set(type)
   data = model.convert_data_set(data, type=type)
   model.load_data_set(data, type=type)
+  # print(urls)
 
   model.init_layers()
+  model.load_w()
 
+
+
+def start_train():
   H = model.fit_data_set()
+  model.save_w()
   model.show_and_write_result(H)
 
-  main()
+
+
+
+
+def run_test_on_valid():
+  type = 'test'
+  data = model.get_data_set(type)
+  urls = list(map(lambda x: x.split(',')[0], data))
+  data = model.convert_data_set(data, type=type)
+  model.load_data_set(data, type=type)
+  prediction = model.predict(np.array(model.dataSet[type]["images"]))
+  model.draw(urls, prediction, type)
+
+main()
+# start_train()
+run_test_on_valid()
