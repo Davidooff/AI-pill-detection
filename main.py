@@ -13,11 +13,13 @@ class AI:
       "train": {
         "images": [],
         "targets": [],
+        "shapes": []
       },
       "test": {
         "images": [],
         "targets": [],
-      }
+        "shapes": []
+      },
     }
     self.config = config
 
@@ -37,23 +39,26 @@ class AI:
     return lines
 
   
-  def convert_data_set(self, annotations_data, del_substr="640,640,Pill,", type='train'):
+  def convert_data_set(self, annotations_data, type='train'):
     dataSet = {
       "images": [],
-      "targets": []
+      "targets": [],
+      "shapes": []
     }
 
     for line in annotations_data: 
-      line = line.replace(del_substr, '') # Delliting usles information
-      line = line.split(',') # [image-name, xmin, ymin, xmax, ymax]
+      # line = line.replace(del_substr, '') # Delliting usles information
+      line = line.split(',') # [image-name, xsize, ysize, pill, xmin, ymin, xmax, ymax]
       path_to_img = os.path.join(self.config["DATA_SET_PATH"], type, line[0]) 
       image = cv.imread(path_to_img)
       image = cv.resize(image, (224,224))
       image = image[...,::-1]
+      shape = [int(line[1]), int(line[2])]
       dataSet["images"].append(image / 255.0) 
-      converted_targets = list(map(int, line[1::]))
-      converted_targets = np.divide(converted_targets, self.config["DEFAULT_IMG_SHAPE"] * 2) #geting line as[xmin, ymin, xmax, ymax]/([x,y]*2=>[x,y,x,y])
+      converted_targets = list(map(int, line[4::]))
+      converted_targets = np.divide(converted_targets, shape * 2) #geting line as[xmin, ymin, xmax, ymax]/([x,y]*2=>[x,y,x,y])
       dataSet["targets"].append(converted_targets) # 0 >= converted_targets <= 1 
+      dataSet["shapes"].append(shape)
 
     dataSet["images"] = np.array(dataSet["images"], dtype="float32")
     dataSet["targets"] = np.array(dataSet["targets"], dtype="float32")
@@ -75,19 +80,19 @@ class AI:
     self.model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
     self.model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
     self.model.add(keras.layers.Conv2D(filters = 256, kernel_size = 3, padding="same", activation= "relu"))
-    self.model.add(keras.layers.MaxPooling2D())
+    self.model.add(keras.layers.MaxPooling2D((2, 2), 2))
 
     # Block 4
     self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
     self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
     self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-    self.model.add(keras.layers.MaxPooling2D())
+    self.model.add(keras.layers.MaxPooling2D((2, 2), 2))
 
     # Block 5
     self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
     self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
     self.model.add(keras.layers.Conv2D(filters = 512, kernel_size = 3, padding="same", activation= "relu"))
-    self.model.add(keras.layers.MaxPooling2D())
+    self.model.add(keras.layers.MaxPooling2D((2, 2), 2))
     
     # Top
     self.model.add(keras.layers.Flatten())
@@ -129,12 +134,12 @@ class AI:
   def predict(self, x):
     return self.model.predict(x, batch_size=None, verbose="auto", steps=None, callbacks=None)
   
-  def draw(self, x, y, type="valid"):
+  def draw(self, x, y, shapes, type="valid"):
     for i in range(len(x)):
       path = os.path.join(self.config["DATA_SET_PATH"], type, x[i])
       image = cv.imread(path)
-      start = np.array(y[i][:-2:] * self.config["DEFAULT_IMG_SHAPE"], dtype="int32")
-      end = np.array(y[i][2::] * self.config["DEFAULT_IMG_SHAPE"], dtype="int32")
+      start = np.array(y[i][:-2:] * shapes[i], dtype="int32")
+      end = np.array(y[i][2::] * shapes[i], dtype="int32")
       print(start, end)
       image = cv.rectangle(image, start, end, (255, 0, 0) , 2) 
       cv.imshow("Bim-Bam", image)
@@ -182,8 +187,8 @@ def run_test_on_valid():
   data = model.convert_data_set(data, type=type)
   model.load_data_set(data, type=type)
   prediction = model.predict(np.array(model.dataSet[type]["images"]))
-  model.draw(urls, prediction, type)
+  model.draw(urls, prediction, data["shapes"],type)
 
 main()
-# start_train()
+start_train()
 run_test_on_valid()
