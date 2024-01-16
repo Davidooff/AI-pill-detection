@@ -1,9 +1,11 @@
 import os
+import sys
 import keras
 import cv2 as cv
 from matplotlib import pyplot as plt
 import numpy as np
 from config import config
+# import parseFlags
 
 class AI:
 
@@ -151,34 +153,22 @@ class AI:
   def load_w(self):
     self.model.load_weights("tablet.weights.h5")
 
+  def fit_data_in_class(types = ["train", "test"]):
+    type = "train"
+    data = model.get_data_set(type)
+    data = model.convert_data_set(data, type=type)
+    model.load_data_set(data, type=type)
 
-model = AI(config)
-def main():
+    type = "valid"
+    data = model.get_data_set(type)
+    data = model.convert_data_set(data, type=type)
+    model.load_data_set(data, type=type)
   
-  type = "train"
-  data = model.get_data_set(type)
-  data = model.convert_data_set(data, type=type)
-  model.load_data_set(data, type=type)
-
-  type = "valid"
-  data = model.get_data_set(type)
-  data = model.convert_data_set(data, type=type)
-  model.load_data_set(data, type=type)
-  # print(urls)
-
-  model.init_layers()
-  model.load_w()
-
-
 
 def start_train():
   H = model.fit_data_set()
   model.save_w()
   model.show_and_write_result(H)
-
-
-
-
 
 def run_test_on_valid():
   type = 'test'
@@ -189,6 +179,30 @@ def run_test_on_valid():
   prediction = model.predict(np.array(model.dataSet[type]["images"]))
   model.draw(urls, prediction, data["shapes"],type)
 
-main()
-start_train()
-run_test_on_valid()
+
+model = AI(config)
+def main(args = []):
+  model.fit_data_in_class()
+  model.init_layers()
+  if "-l" in args:
+    model.load_w()
+
+  if ("-t" in args) or ("-t-show" in args) or ("-t-show-save" in args) or ("-t-save" in args):
+    H = model.fit_data_set()
+    if ("-t-show-save" in args) or ("-t-save" in args):
+      model.save_w()
+    if ("-t-show-save" in args) or ("-t-show" in args):
+      model.show_and_write_result(H)
+    
+  if "-p" in args:
+    run_test_on_valid()
+
+
+
+
+
+
+main(sys.argv)
+# # model.load_w()
+# start_train()
+# run_test_on_valid()
