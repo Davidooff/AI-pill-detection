@@ -187,11 +187,11 @@ def main(args = []):
   if "-l" in args:
     model.load_w()
 
-  if ("-t" in args) or ("-t-show" in args) or ("-t-show-save" in args) or ("-t-save" in args):
+  if ("-t" in args) or ("-t-show" in args) or ("-t-save-show" in args) or ("-t-save" in args):
     H = model.fit_data_set()
-    if ("-t-show-save" in args) or ("-t-save" in args):
+    if ("-t-save-show" in args) or ("-t-save" in args):
       model.save_w()
-    if ("-t-show-save" in args) or ("-t-show" in args):
+    if ("-t-save-show" in args) or ("-t-show" in args):
       model.show_and_write_result(H)
     
   if "-p" in args:
